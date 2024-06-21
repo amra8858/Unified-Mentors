@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Teacher Booking Appointments</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to Student Teacher Booking Appointments</h1>
+    <div class="buttons">
+      <button id="adminLoginBtn">Login as Admin </button>
+      <button id="teacherLoginBtn">Login as Teacher</button>
+      <button id="studentLoginBtn">Login as Student</button>
+      <button id="registerBtn">Register</button>
+    </div>
+  </div>
+  <script src="scripts/main.js"></script>
+  <script type="module" src="fire-auth.js"></script>
+  <script src="scripts/login.js"></script>
+  <script>
+    // Button click event listeners
+    document.getElementById("adminLoginBtn").addEventListener("click", function() {
+      window.location.href = "login.html?role=admin";
+    });
+
+    document.getElementById("teacherLoginBtn").addEventListener("click", function() {
+      window.location.href = "login.html?role=teacher";
+    });
+
+    document.getElementById("studentLoginBtn").addEventListener("click", function() {
+      window.location.href = "login.html?role=student";
+    });
+
+    document.getElementById("registerBtn").addEventListener("click", function() {
+      window.location.href = "register.html";
+    });
+  </script>
+</body>
+</html>

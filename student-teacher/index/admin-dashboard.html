@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/student-teacher/index/styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Admin Dashboard</h1>
+    
+    <!-- Add Teacher Section -->
+<button onclick="showAddTeacherForm()">Add Teacher</button>
+<div id="addTeacherForm" style="display: none;">
+  <h3>Add Teacher</h3>
+  <input type="text" id="teacherId" placeholder="Teacher ID" required>
+  <input type="text" id="teacherName" placeholder="Teacher Name" required>
+  <input type="text" id="teacherDept" placeholder="Department" required>
+  <input type="text" id="teacherSubject" placeholder="Subject" required>
+  <input type="text" id="teacherContact" placeholder="Contact Number" required>
+  <button onclick="addTeacher()">Submit</button>
+</div>
+
+    </div>
+
+    <!-- Update/Delete Teacher Section -->
+    <button onclick="showUpdateDeleteTeacherForm()">Update/Delete Teacher</button>
+    <div id="updateDeleteTeacherForm" style="display: none;">
+      <h3>Update/Delete Teacher</h3>
+      <input type="text" id="teacherId" placeholder="Teacher ID" required>
+      <button onclick="updateTeacher()">Update</button>
+      <button onclick="deleteTeacher()">Delete</button>
+    </div>
+
+    <!-- Approve Registration Student Section -->
+    <button onclick="showApproveRegistrationForm()">Approve Registration Student</button>
+    <div id="approveRegistrationForm" style="display: none;">
+      <h3>Approve Registration Student</h3>
+      <input type="text" id="studentId" placeholder="Student ID" required>
+      <button onclick="approveRegistration()">Approve</button>
+    </div>
+
+    <!-- Display Teachers List -->
+    <h2>Teachers</h2>
+    <div id="teachersList"></div>
+    
+    <!-- Display Student Registrations -->
+    <h2>Student Registrations</h2>
+    <div id="studentRegistrations"></div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyAs8N1sOcy5pENmlov-DZbDFXKtxXTtrnk",
+    authDomain: "student-teacher-booking-2cffb.firebaseapp.com",
+    projectId: "student-teacher-booking-2cffb",
+    storageBucket: "student-teacher-booking-2cffb.appspot.com",
+    messagingSenderId: "551812567882",
+    appId: "1:551812567882:web:2c7bae391e1bdc18cd27b3",
+    measurementId: "G-0XQ3BFFNMD"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+
+  console.log('Firebase initialized');
+  </script>
+  <script >
+    function showAddTeacherForm() {
+  document.getElementById('addTeacherForm').style.display = 'block';
+  document.getElementById('updateDeleteTeacherForm').style.display = 'none';
+  document.getElementById('approveRegistrationForm').style.display = 'none';
+}
+
+function showUpdateDeleteTeacherForm() {
+  document.getElementById('addTeacherForm').style.display = 'none';
+  document.getElementById('updateDeleteTeacherForm').style.display = 'block';
+  document.getElementById('approveRegistrationForm').style.display = 'none';
+}
+
+function showApproveRegistrationForm() {
+  document.getElementById('addTeacherForm').style.display = 'none';
+  document.getElementById('updateDeleteTeacherForm').style.display = 'none';
+  document.getElementById('approveRegistrationForm').style.display = 'block';
+}
+
+  function addTeacher() {
+  const teacherId = document.getElementById('teacherId').value;
+  const name = document.getElementById('teacherName').value;
+  const dept = document.getElementById('teacherDept').value;
+  const subject = document.getElementById('teacherSubject').value;
+  const contact = document.getElementById('teacherContact').value;
+
+  if (teacherId && name && dept && subject && contact) {
+    const user = firebase.auth().currentUser;
+    if (user) {
+      db.collection('teachers').doc(teacherId).set({
+        teacherId: teacherId,
+        name: name,
+        department: dept,
+        subject: subject,
+        contact: contact,
+        email: user.email // Store the email of the logged-in user
+      })
+      .then(() => {
+        console.log('Teacher added with ID: ', teacherId);
+        // Update the UI with the added teacher's information
+        displayTeachers();
+        // Clear the form fields after submission
+        document.getElementById('teacherId').value = '';
+        document.getElementById('teacherName').value = '';
+        document.getElementById('teacherDept').value = '';
+        document.getElementById('teacherSubject').value = '';
+        document.getElementById('teacherContact').value = '';
+        // Optionally, hide the form after submission
+        document.getElementById('addTeacherForm').style.display = 'none';
+      })
+      .catch((error) => {
+        console.error('Error adding teacher: ', error);
+        alert('An error occurred while adding teacher. Please try again.');
+      });
+    } else {
+      console.error('No user logged in.');
+      alert('No user logged in. Please log in.');
+    }
+  } else {
+    alert('Please fill out all fields.');
+  }
+}
+  // Function to fetch and display all teachers
+function displayTeachers() {
+  const teachersList = document.getElementById('teachersList');
+  teachersList.innerHTML = ''; // Clear previous content
+
+  db.collection('teachers').get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const teacherData = doc.data();
+        const teacherDiv = document.createElement('div');
+        teacherDiv.innerHTML = `<p>Name: ${teacherData.name}, Department: ${teacherData.department}, Subject: ${teacherData.subject}, Contact: ${teacherData.contact}</p>`;
+        teachersList.appendChild(teacherDiv);
+
+        // Create an "Update" button for each teacher
+        const updateButton = document.createElement('button');
+        updateButton.innerText = 'Update';
+        updateButton.onclick = function() {
+          populateUpdateForm(doc.id, teacherData.name, teacherData.department, teacherData.subject, teacherData.contact);
+        };
+        teacherDiv.appendChild(updateButton);
+
+        // Create a "Delete" button for each teacher
+        const deleteButton = document.createElement('button');
+        deleteButton.innerText = 'Delete';
+        deleteButton.onclick = function() {
+          deleteTeacher(doc.id);
+        };
+        teacherDiv.appendChild(deleteButton);
+      });
+    })
+    .catch((error) => {
+      console.error('Error getting teachers: ', error);
+      alert('An error occurred while fetching teachers. Please try again.');
+    });
+}
+
+// Call the displayTeachers function when the page loads
+document.addEventListener('DOMContentLoaded', displayTeachers);
+
+
+function deleteTeacher() {
+  const teacherId = document.getElementById('teacherId').value;
+
+  if (teacherId) {
+    db.collection('teachers').doc(teacherId).delete()
+    .then(() => {
+      console.log('Teacher deleted with ID: ', teacherId);
+      // Update the UI to remove the deleted teacher's information
+      displayTeachers();
+      // Clear the form field after deletion
+      document.getElementById('teacherId').value = '';
+    })
+    .catch((error) => {
+      console.error('Error deleting teacher: ', error);
+      alert('An error occurred while deleting teacher. Please try again.');
+    });
+  } else {
+    alert('Please enter Teacher ID to delete.');
+  }
+}
+
+
+
+
+function approveRegistration() {
+  const studentId = document.getElementById('studentId').value;
+  alert(`Approve functionality for Student ID: ${studentId} is not implemented in this demo.`);
+}
+// Function to fetch and display all teachers
+function displayTeachers() {
+  const teachersList = document.getElementById('teachersList');
+  teachersList.innerHTML = ''; // Clear previous content
+
+  db.collection('teachers').get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const teacherData = doc.data();
+        const teacherDiv = document.createElement('div');
+        teacherDiv.innerHTML = `<p>Name: ${teacherData.name}, Department: ${teacherData.department}, Subject: ${teacherData.subject}, Contact: ${teacherData.contact}</p>`;
+        teachersList.appendChild(teacherDiv);
+      });
+    })
+    .catch((error) => {
+      console.error('Error getting teachers: ', error);
+      alert('An error occurred while fetching teachers. Please try again.');
+    });
+}
+
+// Call the displayTeachers function when the page loads
+document.addEventListener('DOMContentLoaded', displayTeachers);
+
+function displayTeachers() {
+  const teachersList = document.getElementById('teachersList');
+  teachersList.innerHTML = ''; // Clear previous content
+
+  db.collection('teachers').get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const teacherData = doc.data();
+        const teacherDiv = document.createElement('div');
+        teacherDiv.innerHTML = `<p>Name: ${teacherData.name}, Department: ${teacherData.department}, Subject: ${teacherData.subject}, Contact: ${teacherData.contact}</p>`;
+        
+        // Add an Update and Delete button for each teacher
+        const updateButton = document.createElement('button');
+        updateButton.innerText = 'Update';
+        updateButton.onclick = function() {
+          // Fill the form fields with the teacher's information for updating
+          document.getElementById('teacherId').value = doc.id;
+          document.getElementById('teacherName').value = teacherData.name;
+          document.getElementById('teacherDept').value = teacherData.department;
+          document.getElementById('teacherSubject').value = teacherData.subject;
+          document.getElementById('teacherContact').value = teacherData.contact;
+          // Show the update/delete form
+          showUpdateDeleteTeacherForm();
+        };
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.innerText = 'Delete';
+        deleteButton.onclick = function() {
+          // Delete the teacher with the specific ID
+          db.collection('teachers').doc(doc.id).delete()
+          .then(() => {
+            console.log('Teacher deleted');
+            // Update the UI to remove the deleted teacher's information
+            displayTeachers();
+          })
+          .catch((error) => {
+            console.error('Error deleting teacher: ', error);
+            alert('An error occurred while deleting teacher. Please try again.');
+          });
+        };
+        
+        teacherDiv.appendChild(updateButton);
+        teacherDiv.appendChild(deleteButton);
+        teachersList.appendChild(teacherDiv);
+      });
+    })
+    .catch((error) => {
+      console.error('Error getting teachers: ', error);
+      alert('An error occurred while fetching teachers. Please try again.');
+    });
+}
+
+  </script>
+
+</body>
+</html>

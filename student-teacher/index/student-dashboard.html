@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard</title>
+
+    <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #1abc9c;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-bottom: 10px;
+      background-color: #16a085;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    /* Add your CSS styles here */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Student Dashboard</h1>
+    
+    <!-- Search Teacher Section -->
+    <button onclick="showSearchTeacherForm()">Search Teacher</button>
+    <div id="searchTeacherForm" style="display: none;">
+      <h3>Search Teacher</h3>
+      <input type="text" id="teacherName" placeholder="Teacher Name" required>
+      <button onclick="searchTeacher()">Search</button>
+    </div>
+
+    <!-- Book Appointment Section -->
+    <button onclick="showBookAppointmentForm()">Book Appointment</button>
+    <div id="bookAppointmentForm" style="display: none;">
+      <h3>Book Appointment</h3>
+      <select id="teacherSelect">
+        <!-- Teachers will be fetched and displayed here -->
+      </select>
+      <input type="datetime-local" id="appointmentDateTime" required>
+      <button onclick="bookAppointment()">Book</button>
+    </div>
+
+    <!-- Send Message Section -->
+    <button onclick="showSendMessageForm()">Send Message</button>
+    <div id="sendMessageForm" style="display: none;">
+      <h3>Send Message</h3>
+      <select id="sendMessageTeacherName">
+        <!-- Teachers will be fetched and displayed here -->
+      </select>
+      <textarea id="message" placeholder="Message" required></textarea>
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <!-- View Messages Section -->
+    <button onclick="showViewMessages()">View Messages</button>
+    <div id="viewMessages" style="display: none;">
+      <h3>View Messages</h3>
+      <!-- Display messages here -->
+    </div>
+
+    <!-- View All Appointments Section -->
+    <button onclick="showViewAllAppointments()">View All Appointments</button>
+    <div id="viewAllAppointments" style="display: none;">
+      <h3>View All Appointments</h3>
+      <!-- Display all appointments here -->
+    </div>
+
+    <!-- Logout Button -->
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+  <script>
+    // Your web app's Firebase configuration
+    var firebaseConfig = {
+      apiKey: "AIzaSyAs8N1sOcy5pENmlov-DZbDFXKtxXTtrnk",
+      authDomain: "student-teacher-booking-2cffb.firebaseapp.com",
+      projectId: "student-teacher-booking-2cffb",
+      storageBucket: "student-teacher-booking-2cffb.appspot.com",
+      messagingSenderId: "551812567882",
+      appId: "1:551812567882:web:2c7bae391e1bdc18cd27b3",
+      measurementId: "G-0XQ3BFFNMD"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    var auth = firebase.auth();
+    var db = firebase.firestore();
+
+    console.log('Firebase initialized');
+
+     // Create index for appointments collection
+     db.collection('appointments').get().then(() => {
+      console.log('Index already exists for appointments collection');
+    }).catch((error) => {
+      console.error('Index does not exist for appointments collection. Creating index...');
+      db.collection('appointments').doc('INDEX').set({
+        studentEmail: 'ASC',
+        teacherName: 'ASC',
+        appointmentDateTime: 'ASC',
+        status: 'ASC'
+      }).then(() => {
+        console.log('Index created successfully for appointments collection');
+      }).catch((error) => {
+        console.error('Error creating index for appointments collection:', error);
+      });
+    });
+
+    
+    function showSearchTeacherForm() {
+  document.getElementById('searchTeacherForm').style.display = 'block';
+  document.getElementById('bookAppointmentForm').style.display = 'none';
+  document.getElementById('sendMessageForm').style.display = 'none';
+  document.getElementById('viewMessages').style.display = 'none';
+  document.getElementById('viewAllAppointments').style.display = 'none';
+}
+
+function showBookAppointmentForm() {
+  document.getElementById('searchTeacherForm').style.display = 'none';
+  document.getElementById('bookAppointmentForm').style.display = 'block';
+  document.getElementById('sendMessageForm').style.display = 'none';
+  document.getElementById('viewMessages').style.display = 'none';
+  document.getElementById('viewAllAppointments').style.display = 'none';
+
+  // Fetch and display teachers in the dropdown
+  const teacherSelect = document.getElementById('teacherSelect');
+  teacherSelect.innerHTML = '';
+  db.collection('teachers').get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const teacherData = doc.data();
+        const option = document.createElement('option');
+        option.value = teacherData.name;
+        option.text = teacherData.name;
+        teacherSelect.appendChild(option);
+      });
+    })
+    .catch((error) => {
+      console.error('Error fetching teachers: ', error);
+      alert('An error occurred while fetching teachers. Please try again.');
+    });
+}
+
+function showSendMessageForm() {
+  document.getElementById('searchTeacherForm').style.display = 'none';
+  document.getElementById('bookAppointmentForm').style.display = 'none';
+  document.getElementById('sendMessageForm').style.display = 'block';
+  document.getElementById('viewMessages').style.display = 'none';
+  document.getElementById('viewAllAppointments').style.display = 'none';
+
+  // Fetch and display teachers in the dropdown
+  const sendMessageTeacherName = document.getElementById('sendMessageTeacherName');
+  sendMessageTeacherName.innerHTML = '';
+  db.collection('teachers').get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const teacherData = doc.data();
+        const option = document.createElement('option');
+        option.value = teacherData.name;
+        option.text = teacherData.name;
+        sendMessageTeacherName.appendChild(option);
+      });
+    })
+    .catch((error) => {
+      console.error('Error fetching teachers: ', error);
+      alert('An error occurred while fetching teachers. Please try again.');
+    });
+}
+
+function showViewMessages() {
+  document.getElementById('searchTeacherForm').style.display = 'none';
+  document.getElementById('bookAppointmentForm').style.display = 'none';
+  document.getElementById('sendMessageForm').style.display = 'none';
+  document.getElementById('viewMessages').style.display = 'block';
+  document.getElementById('viewAllAppointments').style.display = 'none';
+
+  // Display messages
+  displayMessages();
+}
+
+function showViewAllAppointments() {
+  document.getElementById('searchTeacherForm').style.display = 'none';
+  document.getElementById('bookAppointmentForm').style.display = 'none';
+  document.getElementById('sendMessageForm').style.display = 'none';
+  document.getElementById('viewMessages').style.display = 'none';
+  document.getElementById('viewAllAppointments').style.display = 'block';
+
+  // Display appointments
+  displayAppointments();
+}
+
+
+    
+
+    function searchTeacher() {
+  const teacherName = document.getElementById('teacherName').value;
+  // Search for teachers with the given name
+  db.collection('teachers').where('name', '==', teacherName).get()
+    .then((querySnapshot) => {
+      // Display search results or perform any other actions
+    })
+    .catch((error) => {
+      console.error('Error searching for teachers: ', error);
+      alert('An error occurred while searching for teachers. Please try again.');
+    });
+}
+
+function bookAppointment() {
+  const teacherName = document.getElementById('teacherSelect').value;
+  const appointmentDateTime = document.getElementById('appointmentDateTime').value;
+
+  if (teacherName && appointmentDateTime) {
+    const user = firebase.auth().currentUser;
+    if (user) {
+      db.collection('appointments').add({
+        studentEmail: user.email,
+        teacherName: teacherName,
+        appointmentDateTime: appointmentDateTime,
+        status: 'Pending'
+      })
+      .then((docRef) => {
+        console.log('Appointment booked with ID: ', docRef.id);
+        alert('Appointment booked successfully.');
+        document.getElementById('teacherSelect').value = '';
+        document.getElementById('appointmentDateTime').value = '';
+        document.getElementById('bookAppointmentForm').style.display = 'none';
+      })
+      .catch((error) => {
+        console.error('Error booking appointment: ', error);
+        alert('An error occurred while booking appointment. Please try again.');
+      });
+    } else {
+      console.error('No user logged in.');
+      alert('No user logged in. Please log in.');
+    }
+  } else {
+    alert('Please fill out all fields.');
+  }
+}
+
+function sendMessage() {
+  const teacherName = document.getElementById('sendMessageTeacherName').value;
+  const message = document.getElementById('message').value;
+
+  if (teacherName && message) {
+    const user = firebase.auth().currentUser;
+    if (user) {
+      db.collection('messages').add({
+        studentEmail: user.email,
+        teacherName: teacherName,
+        message: message,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      })
+      .then((docRef) => {
+        console.log('Message sent with ID: ', docRef.id);
+        alert('Message sent successfully.');
+        document.getElementById('sendMessageTeacherName').value = '';
+        document.getElementById('message').value = '';
+        document.getElementById('sendMessageForm').style.display = 'none';
+      })
+      .catch((error) => {
+        console.error('Error sending message: ', error);
+        alert('An error occurred while sending message. Please try again.');
+      });
+    } else {
+      console.error('No user logged in.');
+      alert('No user logged in. Please log in.');
+    }
+  } else {
+    alert('Please fill out all fields.');
+  }
+}
+
+function displayMessages() {
+  const user = firebase.auth().currentUser;
+  if (user) {
+    const messagesDiv = document.getElementById('viewMessages');
+    messagesDiv.innerHTML = ''; // Clear previous messages
+
+    db.collection('messages').where('studentEmail', '==', user.email).orderBy('timestamp', 'desc').get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+          const messageData = doc.data();
+          const messageDiv = document.createElement('div');
+          messageDiv.innerHTML = `<p>From: ${messageData.teacherName}, Message: ${messageData.message}, Timestamp: ${messageData.timestamp.toDate()}</p>`;
+          messagesDiv.appendChild(messageDiv);
+        });
+      })
+      .catch((error) => {
+        console.error('Error getting messages: ', error);
+        alert('An error occurred while fetching messages. Please try again.');
+      });
+  } else {
+    console.error('No user logged in.');
+    alert('No user logged in. Please log in.');
+  }
+}
+
+function displayAppointments() {
+  const user = firebase.auth().currentUser;
+  if (user) {
+    const appointmentsDiv = document.getElementById('viewAllAppointments');
+    appointmentsDiv.innerHTML = ''; // Clear previous appointments
+
+    db.collection('appointments').where('studentEmail', '==', user.email).orderBy('appointmentDateTime', 'asc').get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+          const appointmentData = doc.data();
+          const appointmentDiv = document.createElement('div');
+          appointmentDiv.innerHTML = `<p>Teacher: ${appointmentData.teacherName}, Date/Time: ${new Date(appointmentData.appointmentDateTime).toLocaleString()}, Status: ${appointmentData.status}</p>`;
+          appointmentsDiv.appendChild(appointmentDiv);
+        });
+      })
+      .catch((error) => {
+        console.error('Error getting appointments: ', error);
+        alert('An error occurred while fetching appointments. Please try again.');
+      });
+  } else {
+    console.error('No user logged in.');
+    alert('No user logged in. Please log in.');
+  }
+}
+
+function logout() {
+  firebase.auth().signOut().then(() => {
+    console.log('User signed out.');
+    window.location.href = 'index.html';
+  }).catch((error) => {
+    console.error('Error signing out: ', error);
+    alert('An error occurred while signing out. Please try again.');
+  });
+}
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registeration</title>
+    <link rel="stylesheet" href="/index/styles/register.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"/>
+  </head>
+  <body>
+    <div class="container">
+      <div class="wrapper">
+        <div class="title"><span>Sign Up</span></div>
+        <form id="registerForm">
+          <div class="row">
+            <i class="fas fa-user"></i>
+            <input type="text" id="email" placeholder="Email" required>
+          </div>
+          <div class="row">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" placeholder="Password" required>
+          </div>
+          <div class="row">
+            <label for="role">Role:</label>
+            <select id="role" name="role" required>
+              <option value="admin">Admin</option>
+              <option value="teacher">Teacher</option>
+              <option value="student">Student</option>
+            </select>
+          </div>
+          <div class="row button">
+            <input type="submit" value="Register">
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+    <script>
+      var firebaseConfig = {
+        apiKey: "AIzaSyAs8N1sOcy5pENmlov-DZbDFXKtxXTtrnk",
+        authDomain: "student-teacher-booking-2cffb.firebaseapp.com",
+        projectId: "student-teacher-booking-2cffb",
+        storageBucket: "student-teacher-booking-2cffb.appspot.com",
+        messagingSenderId: "551812567882",
+        appId: "1:551812567882:web:2c7bae391e1bdc18cd27b3",
+        measurementId: "G-0XQ3BFFNMD"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      function registerUser(email, password) {
+        auth.createUserWithEmailAndPassword(email, password)
+          .then((userCredential) => {
+            var user = userCredential.user;
+            console.log('User registered:', user.uid);
+
+            // localStorage.setItem('user', JSON.stringify(user));
+
+            var role = document.getElementById('role').value;
+
+            db.collection('users').doc(user.uid).set({
+              uid: user.uid,
+              email: user.email,
+              role: role//add for other details
+              
+            })
+            .then(() => {
+              console.log('User role saved:', role);
+              window.location.href = '/index/login.html'; // Redirect to login page
+            })
+            .catch((error) => {
+              console.error('Error saving user role:', error);
+            });
+          })
+          .catch((error) => {
+            var errorMessage = error.message;
+            console.error('Error registering user:', errorMessage);
+          });
+      }
+
+      document.getElementById('registerForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        var email = document.getElementById('email').value;
+        var password = document.getElementById('password').value;
+        registerUser(email, password);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Dashboard</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #1abc9c;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-bottom: 10px;
+      background-color: #16a085;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    input[type="text"], input[type="datetime-local"], textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Teacher Dashboard</h1>
+    
+    <!-- Schedule Appointment Section -->
+    <button onclick="showScheduleAppointmentForm()">Schedule Appointment</button>
+    <div id="scheduleAppointmentForm" style="display: none;">
+      <h3>Schedule Appointment</h3>
+      <input type="text" id="studentName" placeholder="Student Name" required>
+      <input type="datetime-local" id="appointmentDateTime" required>
+      <button onclick="scheduleAppointment()">Submit</button>
+    </div>
+
+    <!-- Approve/Cancel Appointment Section -->
+    <button onclick="showApproveCancelAppointmentForm()">Approve/Cancel Appointment</button>
+    <div id="approveCancelAppointmentForm" style="display: none;">
+      <h3>Approve/Cancel Appointment</h3>
+      <div id="pendingAppointmentsList"></div>
+    </div>
+
+    <!-- View Messages Section -->
+    <button onclick="showViewMessages()">View Messages</button>
+    <div id="viewMessages" style="display: none;">
+      <h3>View Messages</h3>
+      <div id="messagesList"></div>
+      <h3>Send Message</h3>
+      <input type="text" id="studentNameForMessage" placeholder="Student Name" required>
+      <textarea id="messageContent" placeholder="Message" required></textarea>
+      <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <!-- View All Appointments Section -->
+    <button onclick="showViewAllAppointments()">View All Appointments</button>
+    <div id="viewAllAppointments" style="display: none;">
+      <h3>View All Appointments</h3>
+      <div id="appointmentsList"></div>
+    </div>
+
+    <!-- Logout Button -->
+    <button onclick="logout()">Logout</button>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+  <script>
+    // Your web app's Firebase configuration
+    var firebaseConfig = {
+      apiKey: "AIzaSyAs8N1sOcy5pENmlov-DZbDFXKtxXTtrnk",
+      authDomain: "student-teacher-booking-2cffb.firebaseapp.com",
+      projectId: "student-teacher-booking-2cffb",
+      storageBucket: "student-teacher-booking-2cffb.appspot.com",
+      messagingSenderId: "551812567882",
+      appId: "1:551812567882:web:2c7bae391e1bdc18cd27b3",
+      measurementId: "G-0XQ3BFFNMD"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    var auth = firebase.auth();
+    var db = firebase.firestore();
+
+    console.log('Firebase initialized');
+
+    // Show and hide forms
+    function showScheduleAppointmentForm() {
+      document.getElementById('scheduleAppointmentForm').style.display = 'block';
+      document.getElementById('approveCancelAppointmentForm').style.display = 'none';
+      document.getElementById('viewMessages').style.display = 'none';
+      document.getElementById('viewAllAppointments').style.display = 'none';
+    }
+
+    function showApproveCancelAppointmentForm() {
+      document.getElementById('scheduleAppointmentForm').style.display = 'none';
+      document.getElementById('approveCancelAppointmentForm').style.display = 'block';
+      document.getElementById('viewMessages').style.display = 'none';
+      document.getElementById('viewAllAppointments').style.display = 'none';
+      fetchPendingAppointments();
+    }
+
+    function showViewMessages() {
+      document.getElementById('scheduleAppointmentForm').style.display = 'none';
+      document.getElementById('approveCancelAppointmentForm').style.display = 'none';
+      document.getElementById('viewMessages').style.display = 'block';
+      document.getElementById('viewAllAppointments').style.display = 'none';
+      fetchMessages();
+    }
+
+    function showViewAllAppointments() {
+      document.getElementById('scheduleAppointmentForm').style.display = 'none';
+      document.getElementById('approveCancelAppointmentForm').style.display = 'none';
+      document.getElementById('viewMessages').style.display = 'none';
+      document.getElementById('viewAllAppointments').style.display = 'block';
+      fetchAppointments();
+    }
+
+    // Schedule an appointment
+    function scheduleAppointment() {
+      const studentName = document.getElementById('studentName').value;
+      const appointmentDateTime = document.getElementById('appointmentDateTime').value;
+      const user = firebase.auth().currentUser;
+
+      if (user) {
+        db.collection('appointments').add({
+          studentName: studentName,
+          dateTime: appointmentDateTime,
+          teacherEmail: user.email,
+          status: 'pending'
+        })
+        .then(() => {
+          alert('Appointment scheduled successfully');
+          document.getElementById('studentName').value = '';
+          document.getElementById('appointmentDateTime').value = '';
+        })
+        .catch((error) => {
+          console.error('Error scheduling appointment: ', error);
+        });
+      } else {
+        alert('No user logged in. Please log in.');
+      }
+    }
+
+    // Fetch and display pending appointments
+    function fetchPendingAppointments() {
+      const user = firebase.auth().currentUser;
+
+      if (user) {
+        db.collection('appointments').where('teacherEmail', '==', user.email).where('status', '==', 'pending').get()
+          .then((querySnapshot) => {
+            const pendingAppointmentsList = document.getElementById('pendingAppointmentsList');
+            pendingAppointmentsList.innerHTML = '';
+            querySnapshot.forEach((doc) => {
+              const appointmentData = doc.data();
+              const appointmentDiv = document.createElement('div');
+              appointmentDiv.innerHTML = `
+                <p>Student: ${appointmentData.studentName}, DateTime: ${appointmentData.dateTime}</p>
+                <button onclick="approveAppointment('${doc.id}')">Approve</button>
+                <button onclick="cancelAppointment('${doc.id}')">Cancel</button>
+              `;
+              pendingAppointmentsList.appendChild(appointmentDiv);
+            });
+          })
+          .catch((error) => {
+            console.error('Error fetching pending appointments: ', error);
+          });
+      } else {
+        alert('No user logged in. Please log in.');
+      }
+    }
+
+    // Approve an appointment
+    function approveAppointment(appointmentId) {
+      db.collection('appointments').doc(appointmentId).update({
+        status: 'approved'
+      })
+      .then(() => {
+        alert('Appointment approved successfully');
+        fetchPendingAppointments(); // Refresh the pending appointments list
+      })
+      .catch((error) => {
+        console.error('Error approving appointment: ', error);
+      });
+    }
+
+    // Cancel an appointment
+    function cancelAppointment(appointmentId) {
+      db.collection('appointments').doc(appointmentId).update({
+        status: 'canceled'
+      })
+      .then(() => {
+        alert('Appointment canceled successfully');
+        fetchPendingAppointments(); // Refresh the pending appointments list
+      })
+      .catch((error) => {
+        console.error('Error canceling appointment: ', error);
+      });
+    }
+
+    // Fetch and display messages
+    function fetchMessages() {
+      const user = firebase.auth().currentUser;
+
+      if (user) {
+        db.collection('messages').where('teacherEmail', '==', user.email).get()
+          .then((querySnapshot) => {
+            const messagesList = document.getElementById('messagesList');
+            messagesList.innerHTML = '';
+            querySnapshot.forEach((doc) => {
+              const messageData = doc.data();
+              const messageDiv = document.createElement('div');
+              messageDiv.innerHTML = `<p>From: ${messageData.studentName}, Message: ${messageData.message}</p>`;
+              messagesList.appendChild(messageDiv);
+            });
+          })
+          .catch((error) => {
+            console.error('Error fetching messages: ', error);
+          });
+      } else {
+        alert('No user logged in. Please log in.');
+      }
+    }
+
+    // Send a message
+    function sendMessage() {
+      const studentName = document.getElementById('studentNameForMessage').value;
+      const messageContent = document.getElementById('messageContent').value;
+      const user = firebase.auth().currentUser;
+
+      if (user) {
+        db.collection('messages').add({
+          studentName: studentName,
+          teacherEmail: user.email,
+          message: messageContent
+        })
+        .then(() => {
+          alert('Message sent successfully');
+          document.getElementById('studentNameForMessage').value = '';
+          document.getElementById('messageContent').value = '';
+        })
+        .catch((error) => {
+          console.error('Error sending message: ', error);
+        });
+      } else {
+        alert('No user logged in. Please log in.');
+      }
+    }
+
+    // Fetch and display all appointments
+function fetchAppointments() {
+  const user = firebase.auth().currentUser;
+
+  if (user) {
+    db.collection('appointments').where('studentEmail', '==', user.email).get()
+      .then((querySnapshot) => {
+        const appointmentsList = document.getElementById('appointmentsList');
+        appointmentsList.innerHTML = '';
+        querySnapshot.forEach((doc) => {
+          const appointmentData = doc.data();
+          const appointmentDiv = document.createElement('div');
+          appointmentDiv.innerHTML = `<p>Teacher: ${appointmentData.teacherName}, DateTime: ${appointmentData.appointmentDateTime}, Status: ${appointmentData.status}</p>`;
+          appointmentsList.appendChild(appointmentDiv);
+        });
+      })
+      .catch((error) => {
+        console.error('Error fetching appointments: ', error);
+        alert('An error occurred while fetching appointments. Please try again.');
+      });
+  } else {
+    alert('No user logged in. Please log in.');
+  }
+}
+
+    // Logout function
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        alert('Logged out successfully');
+        window.location.href = 'index.html';
+      }).catch((error) => {
+        console.error('Error logging out: ', error);
+      });
+    }
+  </script>
+</body>
+</html>
